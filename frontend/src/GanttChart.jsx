@@ -67,38 +67,58 @@ function TaskModal({ task, onClose }) {
 }
 
 const MIN_TAIL = 6;
-// Вертикаль отступает от финиша предшественника, чтобы не ехать по краю чужой
-// полоски: если связь перепрыгивает через строку, пересечения не избежать, но
-// линия должна уходить за полоску целиком, а не половиной толщины по её кромке.
-const OFFSET = 8;
+const CLEARANCE = 8;
+const MAX_BACK = 40;
 
 /**
- * Маршрут стрелки от финиша предшественника к старту наследника — буквой «Г».
+ * Маршрут стрелки, не задевающий чужие полоски.
  *
- * Вертикаль ставится сразу за финишем предшественника, затем линия входит
- * в наследника. Так стрелка нигде не идёт назад: прежний маршрут при нулевом
- * зазоре (предшественник кончается ровно в день старта наследника) уходил
- * вправо, возвращался левее точки старта и только потом входил в задачу —
- * на плане из десяти задач такой крюк рисовался у девяти связей из двенадцати.
+ * Полоски занимают только середину своей строки, между строками остаётся
+ * свободный коридор. Поэтому вертикаль можно поставить там, где полосок
+ * пересекаемых строк нет: начинаем сразу за финишем предшественника и, пока
+ * вертикаль упирается в чью-то полоску, отодвигаем её вправо за эту полоску.
  *
- * Обратного случая — наследник начинается раньше финиша предшественника —
- * не существует: `recalculate` берёт старт как максимум финишей предшественников,
- * поэтому x наследника всегда не меньше x предшественника.
+ * Дальше три исхода. Вертикаль осталась левее наследника — входим в его левый
+ * край. Попала в его полоску — входим сверху (или снизу, если наследник выше).
+ * Уехала правее всей полоски — возвращаемся по коридору перед строкой
+ * наследника: там полосок нет, так что обратный отрезок ничего не задевает.
  */
-function arrowPath(from, to) {
+function arrowPath(from, to, rows) {
   const x1 = from.x + from.width;
   const y1 = from.y + 4 + BAR_HEIGHT / 2;
   const x2 = to.x;
   const y2 = to.y + 4 + BAR_HEIGHT / 2;
-  const vertical = x1 + OFFSET;
+  const down = to.y > from.y;
+  const edge = down ? to.y + 4 : to.y + 4 + BAR_HEIGHT;
 
-  // Есть куда положить горизонтальный хвост — входим слева, по центру полоски.
-  if (x2 - vertical >= MIN_TAIL) return `M ${x1} ${y1} H ${vertical} V ${y2} H ${x2}`;
+  const crossed = rows.filter((row) =>
+    down ? row.y > from.y && row.y < to.y : row.y < from.y && row.y > to.y
+  );
+  const clear = (x) => !crossed.some((row) => x > row.x && x < row.x + row.width);
+  const slide = (x, step) => {
+    for (let pass = 0; pass <= crossed.length && !clear(x); pass += 1) {
+      const blocking = crossed.find((row) => x > row.x && x < row.x + row.width);
+      x = step > 0 ? blocking.x + blocking.width + CLEARANCE : blocking.x - CLEARANCE;
+    }
+    return x;
+  };
 
-  // Задачи стык в стык: вертикаль в ближний край полоски. Дальний край означал бы,
-  // что наконечник спрятался под ней.
-  const entry = Math.min(Math.max(vertical, x2 + OFFSET), x2 + to.width - 4);
-  return `M ${x1} ${y1} H ${entry} V ${y2 > y1 ? to.y + 4 : to.y + 4 + BAR_HEIGHT}`;
+  // Справа от финиша предшественника — если так удаётся войти в левый край
+  // наследника, это лучший вариант: стрелка приходит ровно в начало задачи.
+  const right = slide(x1 + CLEARANCE, +1);
+  if (x2 - right >= MIN_TAIL) return `M ${x1} ${y1} H ${right} V ${y2} H ${x2}`;
+
+  // Задачи стык в стык: входим сверху у самого начала полоски. Крюк назад тут
+  // был бы лишним — обходить нечего.
+  if (right <= x2 + MAX_BACK) return `M ${x1} ${y1} H ${right} V ${edge}`;
+
+  // Правый обход увёл далеко в середину полоски. Пробуем слева от старта
+  // наследника: короткий крюк назад читается привычно, так рисует MS Project.
+  const left = slide(x2 - CLEARANCE, -1);
+  if (x1 - left <= MAX_BACK) return `M ${x1} ${y1} H ${left} V ${y2} H ${x2}`;
+
+  // Обе стороны далеко: входим сверху, прижимая точку входа к полоске.
+  return `M ${x1} ${y1} H ${Math.min(right, x2 + to.width - CLEARANCE)} V ${edge}`;
 }
 
 export default function GanttChart({ plan }) {
@@ -149,7 +169,7 @@ export default function GanttChart({ plan }) {
           if (!from) return null;
           return (
             <path key={`${predecessorId}-${task.id}`}
-                  d={arrowPath(from, to)} fill="none"
+                  d={arrowPath(from, to, rows)} fill="none"
                   stroke="var(--muted)" strokeWidth="1.2" markerEnd="url(#arrow)" />
           );
         })

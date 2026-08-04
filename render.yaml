@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: gantt-ai-plan
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: frankfurt
+    healthCheckPath: /api/plan
+    envVars:
+      # Значение задаётся в дашборде Render: sync: false означает «не хранить в репозитории».
+      - key: OPENROUTER_API_KEY
+        sync: false

@@ -20,4 +20,5 @@ COPY --from=frontend /app/frontend/dist frontend/dist
 
 USER appuser
 EXPOSE 8080
-CMD ["python", "-m", "uvicorn", "api:app", "--app-dir", "backend", "--host", "0.0.0.0", "--port", "8080"]
+# Порт берётся из окружения: Render и подобные площадки задают его сами, локально — 8080.
+CMD ["sh", "-c", "python -m uvicorn api:app --app-dir backend --host 0.0.0.0 --port ${PORT:-8080}"]

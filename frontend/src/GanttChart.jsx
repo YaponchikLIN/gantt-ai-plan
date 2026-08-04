@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 
-const LABEL_WIDTH = 220;
-const DAY_WIDTH = 24;
+// Колонка слева держит и название задачи, и исполнителя, поэтому она шире
+// обычного: в поле диаграммы текста нет вовсе, там только полоски и стрелки.
+const LABEL_WIDTH = 320;
+const DAY_WIDTH = 20;
 const ROW_HEIGHT = 34;
 const BAR_HEIGHT = 18;
 const HEADER_HEIGHT = 40;
@@ -10,6 +12,10 @@ const DAY = 24 * 60 * 60 * 1000;
 
 function daysBetween(from, to) {
   return Math.round((new Date(to) - new Date(from)) / DAY);
+}
+
+function clip(text, limit) {
+  return text.length > limit ? `${text.slice(0, limit - 1)}…` : text;
 }
 
 // "YYYY-MM-DD" parses as UTC midnight; reading it back with getDate()/getDay()
@@ -189,13 +195,16 @@ export default function GanttChart({ plan }) {
            role="button" tabIndex={0} aria-label={`${task.name}, ${task.start} — ${task.finish}`}
            style={{ cursor: "pointer" }}>
           <text x={8} y={y + BAR_HEIGHT} fontSize="13" fill="var(--ink)">
-            {task.name.length > 26 ? `${task.name.slice(0, 25)}…` : task.name}
+            {clip(task.name, 24)}
+          </text>
+          {/* Исполнитель — в левой колонке, а не у полоски: в поле диаграммы
+              ходят стрелки, и любой текст там рано или поздно ими перечёркивается. */}
+          <text x={LABEL_WIDTH - 12} y={y + BAR_HEIGHT} fontSize="11" textAnchor="end"
+                fill="var(--muted)">
+            {clip(task.assignee, 14)}
           </text>
           <rect x={x} y={y + 4} width={barWidth} height={BAR_HEIGHT} rx="4"
                 fill={task.on_critical_path ? "var(--bar-critical)" : "var(--bar)"} />
-          <text x={x + barWidth + 6} y={y + BAR_HEIGHT} fontSize="11" fill="var(--muted)">
-            {task.assignee}
-          </text>
         </g>
       ))}
     </svg>

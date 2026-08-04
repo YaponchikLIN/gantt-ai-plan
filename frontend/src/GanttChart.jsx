@@ -117,8 +117,11 @@ function arrowPath(from, to, rows) {
   const left = slide(x2 - CLEARANCE, -1);
   if (x1 - left <= MAX_BACK) return `M ${x1} ${y1} H ${left} V ${y2} H ${x2}`;
 
-  // Обе стороны далеко: входим сверху, прижимая точку входа к полоске.
-  return `M ${x1} ${y1} H ${Math.min(right, x2 + to.width - CLEARANCE)} V ${edge}`;
+  // Обе стороны далеко: уходим вправо мимо всех помех, возвращаемся по коридору
+  // перед строкой наследника — там полосок нет по построению — и входим сверху.
+  const corridor = down ? to.y - 6 : to.y + ROW_HEIGHT - 6;
+  const entry = Math.min(x2 + CLEARANCE, x2 + to.width - 2);
+  return `M ${x1} ${y1} H ${right} V ${corridor} H ${entry} V ${edge}`;
 }
 
 export default function GanttChart({ plan }) {

@@ -67,6 +67,10 @@ function TaskModal({ task, onClose }) {
 }
 
 const MIN_TAIL = 6;
+// Вертикаль отступает от финиша предшественника, чтобы не ехать по краю чужой
+// полоски: если связь перепрыгивает через строку, пересечения не избежать, но
+// линия должна уходить за полоску целиком, а не половиной толщины по её кромке.
+const OFFSET = 8;
 
 /**
  * Маршрут стрелки от финиша предшественника к старту наследника — буквой «Г».
@@ -86,13 +90,15 @@ function arrowPath(from, to) {
   const y1 = from.y + 4 + BAR_HEIGHT / 2;
   const x2 = to.x;
   const y2 = to.y + 4 + BAR_HEIGHT / 2;
+  const vertical = x1 + OFFSET;
 
   // Есть куда положить горизонтальный хвост — входим слева, по центру полоски.
-  if (x2 - x1 >= MIN_TAIL) return `M ${x1} ${y1} V ${y2} H ${x2}`;
+  if (x2 - vertical >= MIN_TAIL) return `M ${x1} ${y1} H ${vertical} V ${y2} H ${x2}`;
 
-  // Задачи стык в стык: чистая вертикаль в ближний край полоски. Дальний край
-  // означал бы, что наконечник спрятался под ней.
-  return `M ${x1} ${y1} V ${y2 > y1 ? to.y + 4 : to.y + 4 + BAR_HEIGHT}`;
+  // Задачи стык в стык: вертикаль в ближний край полоски. Дальний край означал бы,
+  // что наконечник спрятался под ней.
+  const entry = Math.min(Math.max(vertical, x2 + OFFSET), x2 + to.width - 4);
+  return `M ${x1} ${y1} H ${entry} V ${y2 > y1 ? to.y + 4 : to.y + 4 + BAR_HEIGHT}`;
 }
 
 export default function GanttChart({ plan }) {

@@ -198,7 +198,9 @@ export default function GanttChart({ plan }) {
             {clip(task.name, 24)}
           </text>
           {/* Исполнитель — в левой колонке, а не у полоски: в поле диаграммы
-              ходят стрелки, и любой текст там рано или поздно ими перечёркивается. */}
+              ходят стрелки, и любой текст там рано или поздно ими перечёркивается.
+              Отступ 12 держит запас: левее LABEL_WIDTH − CLEARANCE стрелка уйти
+              не может, так что подписи и линии не встречаются вовсе. */}
           <text x={LABEL_WIDTH - 12} y={y + BAR_HEIGHT} fontSize="11" textAnchor="end"
                 fill="var(--muted)">
             {clip(task.assignee, 14)}

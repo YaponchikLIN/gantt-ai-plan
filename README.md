@@ -18,17 +18,44 @@ FastAPI-бэкенд ведёт цикл обращений к модели по
 
 ## Запуск
 
-Виртуальное окружение уже есть в `.venv`, зависимости — в `backend/requirements.txt`.
+Ключ OpenRouter нужен только для чата. Диаграмма, импорт и экспорт работают и без него.
 
-Бэкенд по умолчанию слушает порт 8000, фронтенд — 5173:
+### Через Docker — одна команда
 
 ```bash
-cd backend && ../.venv/bin/python -m uvicorn api:app
-npm run dev --prefix frontend
+docker build -t gantt-ai-plan .
+docker run --rm -p 8080:8080 -e OPENROUTER_API_KEY=sk-or-v1-... gantt-ai-plan
 ```
 
-Перед первым запуском бэкенда скопируйте `backend/.env.example` в `backend/.env` и впишите туда ключ
-OpenRouter.
+Открыть http://localhost:8080. Python и Node на машине не нужны: в контейнере и бэкенд, и собранный
+фронтенд, и MCP-сервер.
+
+### Из исходников
+
+Нужны Python 3.11+ и Node 20+.
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -r backend/requirements.txt
+npm install --prefix frontend
+cp backend/.env.example backend/.env   # вписать ключ OpenRouter
+```
+
+Два процесса, в разных терминалах:
+
+```bash
+cd backend && ../.venv/bin/python -m uvicorn api:app   # бэкенд на 8000
+npm run dev --prefix frontend                          # фронтенд на 5173
+```
+
+Открыть http://localhost:5173.
+
+Если порт 8000 занят, фронтенд читает адрес бэкенда из `VITE_API_BASE`:
+
+```bash
+cd backend && ../.venv/bin/python -m uvicorn api:app --port 8010
+VITE_API_BASE=http://localhost:8010/api npm run dev --prefix frontend
+```
 
 При старте бэкенд заполняет план тестовыми данными из `backend/sample_data.py` — десять задач с
 ветвлением и видимым критическим путём, старт проекта сегодняшний. Открытая страница сразу показывает
@@ -41,14 +68,6 @@ OpenRouter.
   совпадающего с засидированным, ничего не меняет на экране, и проверить импорт по картинке нельзя.
 
 Оба пересобираются из `backend/sample_data.py` командой `python demo_scenarios.py --sample`.
-
-Если порт 8000 занят, фронтенд читает адрес бэкенда из `VITE_API_BASE`, так что бэкенд можно поднять
-на другом порту:
-
-```bash
-cd backend && ../.venv/bin/python -m uvicorn api:app --port 8010
-VITE_API_BASE=http://localhost:8010/api npm run dev --prefix frontend
-```
 
 ## Проверка
 

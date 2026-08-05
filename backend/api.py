@@ -45,10 +45,14 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS")
 app.add_middleware(
     CORSMiddleware,
-    # порт vite; в продакшене — закрытый список из ALLOWED_ORIGINS
-    allow_origins=os.environ.get("ALLOWED_ORIGINS", "http://localhost:5173").split(","),
+    # В продакшене — закрытый список из ALLOWED_ORIGINS. Без неё пускаем любой
+    # localhost: vite при занятом 5173 молча берёт 5174, и жёсткий список
+    # превратил бы это в пустой экран с «бэкенд не отвечает».
+    allow_origins=ALLOWED_ORIGINS.split(",") if ALLOWED_ORIGINS else [],
+    allow_origin_regex=None if ALLOWED_ORIGINS else r"http://localhost:\d+",
     allow_methods=["*"],
     allow_headers=["*"],
 )

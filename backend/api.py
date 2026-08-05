@@ -23,7 +23,7 @@ from sample_data import sample_tasks
 load_dotenv(Path(__file__).with_name(".env"))
 
 SERVER = Path(__file__).with_name("plan_mcp_server.py")
-history: list[dict] = []  # одна на приложение: см. ROADMAP, пункт 2
+history: list[dict] = []  # одна на приложение: см. ROADMAP.md, пункт 1.2
 
 
 @asynccontextmanager

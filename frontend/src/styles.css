@@ -27,6 +27,7 @@ body { margin: 0; color: var(--ink); background: var(--bg); }
 }
 .toolbar .download { text-decoration: none; color: inherit; }
 .toolbar .summary { color: var(--muted); }
+.toolbar .late { color: var(--bar-critical); font-weight: 600; }
 .toolbar label.disabled { opacity: 0.5; cursor: not-allowed; }
 .errors { border-top: 1px solid var(--line); background: #fff5f5; padding: 8px 12px; }
 .errors li { color: var(--bar-critical); }

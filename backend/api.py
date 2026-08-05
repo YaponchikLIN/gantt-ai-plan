@@ -109,9 +109,10 @@ async def chat(request: ChatRequest):
 
 
 async def _restore(snapshot: dict) -> dict:
-    """Вернуть план к снимку, сделанному до фразы."""
+    """Вернуть план к снимку, сделанному до фразы, вместе с дедлайном."""
     return await call("_load_plan", {"tasks": snapshot["tasks"],
-                                     "project_start": snapshot["project_start"]})
+                                     "project_start": snapshot["project_start"],
+                                     "deadline": snapshot["deadline"]})
 
 
 @app.get("/api/export")

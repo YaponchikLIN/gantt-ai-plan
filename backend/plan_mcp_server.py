@@ -8,7 +8,7 @@ from mcp.server import MCPServer
 
 srv = MCPServer("plan")
 
-STATE = {"tasks": {}, "project_start": date.today(), "next_id": 1}
+STATE = {"tasks": {}, "project_start": date.today(), "next_id": 1, "deadline": None}
 
 
 def _topological_order():
@@ -85,9 +85,17 @@ def recalculate():
             "on_critical_path": slack[tid] == 0,
         })
 
+    # Дедлайн хранится как день, к концу которого работа должна закончиться,
+    # а finish — это уже следующий день. Поэтому граница на сутки дальше.
+    deadline = STATE["deadline"]
+    boundary = deadline + timedelta(days=1) if deadline else None
+
     return {
         "project_start": STATE["project_start"].isoformat(),
         "project_finish": project_finish.isoformat(),
+        "deadline": deadline.isoformat() if deadline else None,
+        "fits_deadline": project_finish <= boundary if boundary else None,
+        "days_late": max(0, (project_finish - boundary).days) if boundary else 0,
         "tasks": rows,
     }
 
@@ -128,8 +136,11 @@ def get_plan() -> dict:
 
 
 @srv.tool(name="_load_plan")
-def _load_plan(tasks: list[dict], project_start: str) -> dict:
-    """Служебный инструмент импорта: заменить план целиком. Модели не показывается."""
+def _load_plan(tasks: list[dict], project_start: str, deadline: str | None = None) -> dict:
+    """Служебный инструмент импорта: заменить план целиком. Модели не показывается.
+
+    `deadline` нужен откату: снимок плана возвращается целиком, вместе с дедлайном.
+    """
     with _transaction():
         ids = [t["id"] for t in tasks]
         duplicates = sorted({i for i in ids if ids.count(i) > 1})
@@ -150,6 +161,23 @@ def _load_plan(tasks: list[dict], project_start: str) -> dict:
         }
         STATE["project_start"] = date.fromisoformat(project_start)
         STATE["next_id"] = max(STATE["tasks"], default=0) + 1
+        STATE["deadline"] = date.fromisoformat(deadline) if deadline else None
+    return recalculate()
+
+
+@srv.tool()
+def set_deadline(deadline: str | None) -> dict:
+    """Поставить дедлайн проекта: работа должна закончиться к концу этого дня (ГГГГ-ММ-ДД).
+
+    Дату передавайте так, как её назвал пользователь, пересчитывать не нужно.
+    None снимает дедлайн.
+
+    Дедлайн ничего не запрещает — он не мешает удлинять задачи и двигать сроки.
+    Его дело в том, чтобы после каждой правки было видно, укладывается план или нет:
+    в ответе появляются `fits_deadline` и `days_late`.
+    """
+    with _transaction():
+        STATE["deadline"] = date.fromisoformat(deadline) if deadline else None
     return recalculate()
 
 

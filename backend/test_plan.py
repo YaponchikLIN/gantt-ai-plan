@@ -807,6 +807,53 @@ def test_chat_rolls_back_and_forgets_the_phrase_when_the_model_fails():
     assert api.history == []            # фраза не осталась висеть
 
 
+def test_deadline_is_absent_until_it_is_set():
+    set_tasks(branching_plan())
+    plan = srv.recalculate()
+    assert plan["deadline"] is None
+    assert plan["fits_deadline"] is None
+    assert plan["days_late"] == 0
+
+
+def test_deadline_counts_the_named_day_as_the_last_working_one():
+    set_tasks(branching_plan())  # проект заканчивается 2026-09-17
+    fits = srv.set_deadline(deadline="2026-09-17")
+    assert fits["fits_deadline"] is True  # финиш 17-го, успеть «к концу 17-го» — да
+    assert fits["days_late"] == 0
+    late = srv.set_deadline(deadline="2026-09-14")
+    assert late["fits_deadline"] is False
+    assert late["days_late"] == 2  # граница — конец 14-го, то есть 15-е
+
+
+def test_deadline_survives_a_change_and_shows_the_delay():
+    set_tasks(branching_plan())
+    srv.set_deadline(deadline="2026-09-17")
+    plan = srv.set_duration(task_id=4, duration=9)  # «Тестирование» на 5 дней дольше
+    assert plan["deadline"] == "2026-09-17"
+    assert plan["fits_deadline"] is False
+    # Финиш уехал с 17-го на 22-е, а граница — конец 17-го, то есть 18-е.
+    # Один день из пяти съел запас, который был до дедлайна.
+    assert plan["days_late"] == 4
+
+
+def test_deadline_can_be_cleared():
+    set_tasks(branching_plan())
+    srv.set_deadline(deadline="2026-09-14")
+    plan = srv.set_deadline(deadline=None)
+    assert plan["deadline"] is None
+    assert plan["fits_deadline"] is None
+
+
+def test_rollback_restores_the_deadline():
+    set_tasks(branching_plan())
+    srv.set_deadline(deadline="2026-09-17")
+    snapshot = srv.recalculate()
+    srv.set_deadline(deadline="2026-10-01")
+    srv._load_plan(tasks=snapshot["tasks"], project_start=snapshot["project_start"],
+                   deadline=snapshot["deadline"])
+    assert srv.recalculate()["deadline"] == "2026-09-17"
+
+
 def test_sample_data_loads_and_has_a_critical_path():
     """Этими данными наполняется план при старте приложения."""
     import sample_data

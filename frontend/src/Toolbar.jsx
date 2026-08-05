@@ -46,7 +46,14 @@ export default function Toolbar({ plan, onPlan, loading }) {
         {plan && plan.tasks.length > 0 && (
           <span className="summary">
             Задач: {plan.tasks.length} · конец проекта: {plan.project_finish}
+            {plan.deadline && <> · дедлайн: {plan.deadline}</>}
           </span>
+        )}
+        {plan && plan.fits_deadline === false && (
+          <span className="late">опоздание на {plan.days_late} дн.</span>
+        )}
+        {plan && plan.fits_deadline === true && (
+          <span className="summary">в срок</span>
         )}
         {message && <span className="summary">{message}</span>}
       </div>

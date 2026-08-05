@@ -1,7 +1,7 @@
 """Прогон инструментов без модели: детерминированно и не тратит запросы к API.
 
 Запуск: python demo_scenarios.py [--sample]
-  --sample — записать образец плана в ../sample_plan.xlsx
+  --sample — записать ../sample_plan.xlsx и ../demo_plan.xlsx
 """
 
 import sys
@@ -9,7 +9,7 @@ from pathlib import Path
 
 import excel_io
 import plan_mcp_server as srv
-from sample_data import sample_tasks
+from sample_data import demo_tasks, sample_tasks
 
 
 def load_sample():
@@ -55,10 +55,17 @@ def main():
 
 
 def write_sample():
-    plan = load_sample()
-    path = Path(__file__).resolve().parent.parent / "sample_plan.xlsx"
-    path.write_bytes(excel_io.export_excel(plan))
-    print("записано:", path)
+    """Оба файла: образец из ТЗ и другой план для демонстрации загрузки.
+
+    Второй нужен именно другим: если загрузить план, совпадающий с тем, что
+    подставляется при старте, диаграмма не изменится и показывать будет нечего.
+    """
+    root = Path(__file__).resolve().parent.parent
+    for name, tasks in (("sample_plan.xlsx", sample_tasks()), ("demo_plan.xlsx", demo_tasks())):
+        plan = srv._load_plan(tasks=tasks, project_start="2026-09-01")
+        path = root / name
+        path.write_bytes(excel_io.export_excel(plan))
+        print("записано:", path, f"({len(plan['tasks'])} задач)")
 
 
 if __name__ == "__main__":
